@@ -46,7 +46,13 @@ export default function NavAuth() {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden sm:inline text-ink/50 text-xs font-mono">
+      <Link
+        href="/my-reports"
+        className="hidden sm:inline text-ink/70 hover:text-ink text-sm"
+      >
+        My reports
+      </Link>
+      <span className="hidden md:inline text-ink/50 text-xs font-mono">
         {email}
       </span>
       <button

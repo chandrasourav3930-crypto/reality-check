@@ -24,7 +24,7 @@ export default function RootLayout({ children }) {
             </Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/" className="text-ink/70 hover:text-ink">
-                Browse
+                Search
               </Link>
               <Link
                 href="/submit"
@@ -42,9 +42,19 @@ export default function RootLayout({ children }) {
         </main>
 
         <footer className="border-t border-line mt-16">
-          <div className="max-w-5xl mx-auto px-5 py-6 text-xs text-ink/50 font-mono">
-            Reality Check is a community log, not a validation service.
-            Always confirm reagent performance in your own hands.
+          <div className="max-w-5xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <p className="text-xs text-ink/50 font-mono">
+              Reality Check is a community log, not a validation service.
+              Always confirm reagent performance in your own hands.
+            </p>
+            <div className="flex gap-4 text-xs text-ink/60">
+              <Link href="/about" className="hover:text-ink">
+                About
+              </Link>
+              <Link href="/contact" className="hover:text-ink">
+                Contact
+              </Link>
+            </div>
           </div>
         </footer>
       </body>
