@@ -1,13 +1,16 @@
 import { createClient } from "@/lib/supabaseServer";
-import EntryCard from "./EntryCard";
-import SearchBox from "./SearchBox";
+import EntryList from "./EntryList";
+import FilterBar from "./FilterBar";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage({ searchParams }) {
   const q = searchParams?.q?.trim() || "";
+  const technique = searchParams?.technique || "";
+  const cancerType = searchParams?.cancer_type || "";
 
   let entries = null;
+  let cancerTypes = [];
   let error = null;
 
   try {
@@ -24,10 +27,22 @@ export default async function HomePage({ searchParams }) {
         `target.ilike.%${q}%,vendor.ilike.%${q}%,cell_line.ilike.%${q}%,catalog_number.ilike.%${q}%`
       );
     }
+    if (technique) query = query.eq("technique", technique);
+    if (cancerType) query = query.eq("cancer_type", cancerType);
 
     const result = await query;
     entries = result.data;
     error = result.error;
+
+    // Distinct cancer types, for the filter dropdown. Small table, so a
+    // simple client-side unique over a light query is fine here.
+    const { data: typesData } = await supabase
+      .from("entries")
+      .select("cancer_type")
+      .not("cancer_type", "is", null);
+    cancerTypes = [...new Set((typesData || []).map((r) => r.cancer_type))]
+      .filter(Boolean)
+      .sort();
   } catch (err) {
     error = err;
   }
@@ -43,7 +58,11 @@ export default async function HomePage({ searchParams }) {
           line — the details vendor pages never tell you.
         </p>
         <div className="mt-6">
-          <SearchBox defaultValue={q} />
+          <FilterBar
+            defaultQ={q}
+            defaultTechnique={technique}
+            cancerTypes={cancerTypes}
+          />
         </div>
       </section>
 
@@ -57,7 +76,9 @@ export default async function HomePage({ searchParams }) {
       {!error && entries?.length === 0 && (
         <div className="rounded-card border border-line bg-panel px-6 py-12 text-center">
           <p className="text-ink font-medium">
-            {q ? `No reports match "${q}" yet.` : "No reports yet."}
+            {q || technique || cancerType
+              ? "No reports match those filters yet."
+              : "No reports yet."}
           </p>
           <p className="text-ink/50 text-sm mt-1">
             Be the first to report a result.
@@ -65,15 +86,7 @@ export default async function HomePage({ searchParams }) {
         </div>
       )}
 
-      {!error && entries?.length > 0 && (
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {entries.map((entry) => (
-            <li key={entry.id}>
-              <EntryCard entry={entry} />
-            </li>
-          ))}
-        </ul>
-      )}
+      {!error && entries?.length > 0 && <EntryList entries={entries} />}
     </div>
   );
 }

@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+
 const STATUS = {
   true: {
     label: "Worked",
@@ -11,8 +15,9 @@ const STATUS = {
   },
 };
 
-export default function EntryCard({ entry }) {
+export default function EntryCard({ entry, counts, isOwner, onDelete, deleting }) {
   const status = STATUS[String(entry.worked)];
+  const totalReports = (counts?.works || 0) + (counts?.fails || 0);
 
   return (
     <article className="relative rounded-card border border-line bg-panel overflow-hidden">
@@ -34,6 +39,15 @@ export default function EntryCard({ entry }) {
           {entry.catalog_number ? ` · ${entry.catalog_number}` : ""}
           {entry.clone ? ` · clone ${entry.clone}` : ""}
         </p>
+
+        {totalReports > 1 && (
+          <p className="mt-2 text-xs font-mono text-ink/50">
+            {totalReports} labs reported this combo
+            {counts.works > 0 && counts.fails > 0
+              ? ` (${counts.works} worked, ${counts.fails} didn't)`
+              : ""}
+          </p>
+        )}
 
         <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-sm font-mono text-ink/80">
           <dt className="text-ink/40">Cell line</dt>
@@ -61,6 +75,24 @@ export default function EntryCard({ entry }) {
           <p className="mt-3 text-sm text-ink/70 border-t border-line pt-3">
             {entry.notes}
           </p>
+        )}
+
+        {isOwner && (
+          <div className="mt-3 border-t border-line pt-3 flex gap-4 text-xs">
+            <Link
+              href={`/submit?edit=${entry.id}`}
+              className="text-ink/60 hover:text-ink font-medium"
+            >
+              Edit
+            </Link>
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              className="text-fails hover:text-fails/80 font-medium disabled:opacity-50"
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         )}
       </div>
     </article>

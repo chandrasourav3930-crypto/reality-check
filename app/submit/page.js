@@ -1,19 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
-
-const TECHNIQUES = [
-  "Western blot",
-  "IHC",
-  "IF",
-  "Flow cytometry",
-  "IP",
-  "ELISA",
-  "Other",
-];
+import { TECHNIQUES } from "@/lib/constants";
 
 const emptyForm = {
   target: "",
@@ -29,16 +20,66 @@ const emptyForm = {
 };
 
 export default function SubmitPage() {
+  return (
+    <Suspense fallback={null}>
+      <SubmitPageContent />
+    </Suspense>
+  );
+}
+
+function SubmitPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+
   const [user, setUser] = useState(undefined); // undefined = loading
   const [form, setForm] = useState(emptyForm);
-  const [status, setStatus] = useState("idle"); // idle | saving | error
+  const [status, setStatus] = useState("idle"); // idle | loading | saving | deleting | error | forbidden
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
-  }, []);
+
+    async function init() {
+      const { data: userData } = await supabase.auth.getUser();
+      setUser(userData.user ?? null);
+
+      if (editId && userData.user) {
+        setStatus("loading");
+        const { data: entry, error } = await supabase
+          .from("entries")
+          .select("*")
+          .eq("id", editId)
+          .single();
+
+        if (error || !entry) {
+          setStatus("error");
+          setErrorMessage("Couldn't find that report.");
+          return;
+        }
+        if (entry.user_id !== userData.user.id) {
+          setStatus("forbidden");
+          return;
+        }
+
+        setForm({
+          target: entry.target || "",
+          vendor: entry.vendor || "",
+          catalog_number: entry.catalog_number || "",
+          clone: entry.clone || "",
+          cell_line: entry.cell_line || "",
+          cancer_type: entry.cancer_type || "",
+          technique: entry.technique || TECHNIQUES[0],
+          dilution: entry.dilution || "",
+          worked: String(entry.worked),
+          notes: entry.notes || "",
+        });
+        setStatus("idle");
+      }
+    }
+
+    init();
+  }, [editId]);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -50,7 +91,7 @@ export default function SubmitPage() {
     setErrorMessage("");
 
     const supabase = createClient();
-    const { error } = await supabase.from("entries").insert({
+    const payload = {
       target: form.target.trim(),
       vendor: form.vendor.trim(),
       catalog_number: form.catalog_number.trim() || null,
@@ -61,8 +102,11 @@ export default function SubmitPage() {
       dilution: form.dilution.trim() || null,
       worked: form.worked === "true",
       notes: form.notes.trim() || null,
-      user_id: user.id,
-    });
+    };
+
+    const { error } = editId
+      ? await supabase.from("entries").update(payload).eq("id", editId)
+      : await supabase.from("entries").insert({ ...payload, user_id: user.id });
 
     if (error) {
       setStatus("error");
@@ -74,8 +118,24 @@ export default function SubmitPage() {
     router.refresh();
   }
 
-  if (user === undefined) {
-    return null; // brief loading state, avoids a flash of the wrong screen
+  async function handleDelete() {
+    if (!confirm("Delete this report? This can't be undone.")) return;
+    setStatus("deleting");
+    const supabase = createClient();
+    const { error } = await supabase.from("entries").delete().eq("id", editId);
+
+    if (error) {
+      setStatus("error");
+      setErrorMessage(error.message);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
+  }
+
+  if (user === undefined || status === "loading") {
+    return null; // brief loading state
   }
 
   if (user === null) {
@@ -98,13 +158,34 @@ export default function SubmitPage() {
     );
   }
 
+  if (status === "forbidden") {
+    return (
+      <div className="max-w-md mx-auto py-8 text-center">
+        <h1 className="font-display font-bold text-2xl text-ink">
+          Not your report
+        </h1>
+        <p className="mt-2 text-sm text-ink/60">
+          You can only edit reports you submitted yourself.
+        </p>
+        <Link
+          href="/"
+          className="mt-6 inline-block rounded-card bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-ink/90"
+        >
+          Back to browse
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-xl mx-auto py-4">
       <h1 className="font-display font-bold text-2xl text-ink">
-        Report a result
+        {editId ? "Edit report" : "Report a result"}
       </h1>
       <p className="mt-2 text-sm text-ink/60">
-        Takes about a minute. Every field except notes is required.
+        {editId
+          ? "Update the details below."
+          : "Takes about a minute. Every field except notes is required."}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
@@ -222,13 +303,30 @@ export default function SubmitPage() {
           <p className="text-fails text-sm">{errorMessage}</p>
         )}
 
-        <button
-          type="submit"
-          disabled={status === "saving"}
-          className="rounded-card bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-ink/90 disabled:opacity-50 self-start"
-        >
-          {status === "saving" ? "Saving…" : "Submit report"}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={status === "saving" || status === "deleting"}
+            className="rounded-card bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-ink/90 disabled:opacity-50"
+          >
+            {status === "saving"
+              ? "Saving…"
+              : editId
+              ? "Save changes"
+              : "Submit report"}
+          </button>
+
+          {editId && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={status === "saving" || status === "deleting"}
+              className="text-fails text-sm font-medium hover:text-fails/80 disabled:opacity-50"
+            >
+              {status === "deleting" ? "Deleting…" : "Delete this report"}
+            </button>
+          )}
+        </div>
       </form>
 
       <style jsx global>{`
