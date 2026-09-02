@@ -23,9 +23,6 @@ export default function RootLayout({ children }) {
               </span>
             </Link>
             <nav className="flex items-center gap-4 text-sm">
-              <Link href="/" className="text-ink/70 hover:text-ink">
-                Search
-              </Link>
               <Link
                 href="/submit"
                 className="text-ink/70 hover:text-ink"

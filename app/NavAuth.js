@@ -5,21 +5,27 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 
 export default function NavAuth() {
-  const [email, setEmail] = useState(undefined); // undefined = loading
+  const [user, setUser] = useState(undefined); // undefined = loading
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
 
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setEmail(session?.user?.email ?? null);
+    async function load() {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user ?? null);
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        setDisplayName(profile?.display_name || "Account");
       }
-    );
+    }
+    load();
 
+    const { data: listener } = supabase.auth.onAuthStateChange(() => load());
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -29,11 +35,11 @@ export default function NavAuth() {
     window.location.href = "/";
   }
 
-  if (email === undefined) {
+  if (user === undefined) {
     return <span className="w-16" />; // avoid layout jump while loading
   }
 
-  if (!email) {
+  if (!user) {
     return (
       <Link
         href="/login"
@@ -45,28 +51,36 @@ export default function NavAuth() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <Link
-        href="/my-reports"
-        className="hidden sm:inline text-ink/70 hover:text-ink text-sm"
-      >
-        My reports
-      </Link>
-      <Link
-        href="/account"
-        className="hidden sm:inline text-ink/70 hover:text-ink text-sm"
-      >
-        Account
-      </Link>
-      <span className="hidden md:inline text-ink/50 text-xs font-mono">
-        {email}
-      </span>
-      <button
-        onClick={handleSignOut}
-        className="text-ink/70 hover:text-ink text-sm"
-      >
-        Sign out
-      </button>
-    </div>
+    <details className="relative">
+      <summary className="list-none flex items-center gap-2 cursor-pointer select-none rounded-full border border-line pl-2 pr-3 py-1 hover:bg-worksSoft/30">
+        <span className="w-6 h-6 rounded-full bg-ink text-paper text-xs flex items-center justify-center font-medium">
+          {displayName.charAt(0).toUpperCase()}
+        </span>
+        <span className="text-sm text-ink/80 max-w-[10rem] truncate">
+          {displayName}
+        </span>
+      </summary>
+
+      <div className="absolute right-0 mt-2 w-44 rounded-card border border-line bg-panel shadow-lg overflow-hidden z-20">
+        <Link
+          href="/my-reports"
+          className="block px-4 py-2.5 text-sm text-ink/80 hover:bg-worksSoft/40"
+        >
+          My reports
+        </Link>
+        <Link
+          href="/account"
+          className="block px-4 py-2.5 text-sm text-ink/80 hover:bg-worksSoft/40"
+        >
+          Account
+        </Link>
+        <button
+          onClick={handleSignOut}
+          className="block w-full text-left px-4 py-2.5 text-sm text-fails hover:bg-failsSoft/40"
+        >
+          Sign out
+        </button>
+      </div>
+    </details>
   );
 }

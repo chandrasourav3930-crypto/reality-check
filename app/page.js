@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabaseServer";
 import EntryCard from "./EntryCard";
 import FilterBar from "./FilterBar";
-import StatsCharts from "./StatsCharts";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +9,6 @@ function groupKey(entry) {
   return [entry.target, entry.vendor, entry.cell_line]
     .map((v) => (v || "").trim().toLowerCase())
     .join("|");
-}
-
-function monthKey(dateStr) {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export default async function HomePage({ searchParams }) {
@@ -27,54 +21,25 @@ export default async function HomePage({ searchParams }) {
   let entries = null;
   let profilesById = {};
   let researchAreas = [];
-  let growth = [];
-  let categoryBreakdown = [];
+  let anyReportsExist = false;
   let error = null;
 
   try {
     const supabase = createClient();
 
-    // All rows, lightweight columns only — used to build filters + charts.
-    const { data: allRows } = await supabase
+    const { data: areaRows } = await supabase
       .from("entries")
-      .select("created_at, vendor, category, research_area")
-      .order("created_at", { ascending: true });
+      .select("research_area")
+      .not("research_area", "is", null);
+    researchAreas = [...new Set((areaRows || []).map((r) => r.research_area))]
+      .filter(Boolean)
+      .sort();
 
-    if (allRows?.length) {
-      researchAreas = [
-        ...new Set(allRows.map((r) => r.research_area)),
-      ]
-        .filter(Boolean)
-        .sort();
-
-      // Cumulative reports + cumulative distinct vendors, by month.
-      const seenVendors = new Set();
-      const byMonth = new Map();
-      for (const row of allRows) {
-        const key = monthKey(row.created_at);
-        seenVendors.add((row.vendor || "").trim().toLowerCase());
-        byMonth.set(key, {
-          reports: (byMonth.get(key)?.reports || 0) + 1,
-          vendors: seenVendors.size,
-        });
-      }
-      let cumulativeReports = 0;
-      growth = [...byMonth.entries()]
-        .sort(([a], [b]) => (a > b ? 1 : -1))
-        .map(([month, v]) => {
-          cumulativeReports += v.reports;
-          return { month, reports: cumulativeReports, vendors: v.vendors };
-        });
-
-      const catCounts = {};
-      for (const row of allRows) {
-        const cat = row.category || "Antibody";
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
-      }
-      categoryBreakdown = Object.entries(catCounts).map(([cat, count]) => ({
-        category: cat,
-        count,
-      }));
+    if (!hasSearch) {
+      const { count } = await supabase
+        .from("entries")
+        .select("*", { count: "exact", head: true });
+      anyReportsExist = (count || 0) > 0;
     }
 
     if (hasSearch) {
@@ -104,7 +69,7 @@ export default async function HomePage({ searchParams }) {
         if (userIds.length) {
           const { data: profiles } = await supabase
             .from("profiles")
-            .select("id, display_name, is_academic")
+            .select("id, display_name, is_academic, orcid_id")
             .in("id", userIds);
           profilesById = Object.fromEntries(
             (profiles || []).map((p) => [p.id, p])
@@ -154,16 +119,12 @@ export default async function HomePage({ searchParams }) {
         </div>
       )}
 
-      {!error && (
-        <StatsCharts growth={growth} categoryBreakdown={categoryBreakdown} />
-      )}
-
       {!error && !hasSearch && (
         <div className="rounded-card border border-line bg-panel px-6 py-14 text-center">
           <p className="text-ink font-medium">
             Search above to see reports.
           </p>
-          {growth.length === 0 && (
+          {!anyReportsExist && (
             <p className="text-ink/50 text-sm mt-1">
               No reports yet —{" "}
               <Link href="/submit" className="underline hover:text-ink">

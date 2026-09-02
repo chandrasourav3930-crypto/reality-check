@@ -22,6 +22,7 @@ function AccountPageContent() {
 
   const [user, setUser] = useState(undefined);
   const [displayName, setDisplayName] = useState("");
+  const [orcidId, setOrcidId] = useState("");
   const [isAcademic, setIsAcademic] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | saving | error
   const [errorMessage, setErrorMessage] = useState("");
@@ -34,10 +35,11 @@ function AccountPageContent() {
         setIsAcademic(isAcademicEmail(data.user.email));
         const { data: profile } = await supabase
           .from("profiles")
-          .select("display_name")
+          .select("display_name, orcid_id")
           .eq("id", data.user.id)
           .maybeSingle();
         if (profile?.display_name) setDisplayName(profile.display_name);
+        if (profile?.orcid_id) setOrcidId(profile.orcid_id);
       }
     });
   }, []);
@@ -47,11 +49,21 @@ function AccountPageContent() {
     setStatus("saving");
     setErrorMessage("");
 
+    const trimmedOrcid = orcidId.trim();
+    if (trimmedOrcid && !/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(trimmedOrcid)) {
+      setStatus("error");
+      setErrorMessage(
+        "ORCID iD should look like 0000-0002-1825-0097 (leave blank if you don't have one)."
+      );
+      return;
+    }
+
     const supabase = createClient();
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
       display_name: displayName.trim(),
       is_academic: isAcademicEmail(user.email),
+      orcid_id: trimmedOrcid || null,
     });
 
     if (error) {
@@ -100,13 +112,32 @@ function AccountPageContent() {
       )}
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
-        <input
-          required
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="e.g. Sourav C., Chen Lab"
-          className="rounded-card border border-line bg-panel px-4 py-2.5 text-sm focus:border-accent"
-        />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm text-ink/70">Display name</span>
+          <input
+            required
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="e.g. Sourav C., Chen Lab"
+            className="rounded-card border border-line bg-panel px-4 py-2.5 text-sm focus:border-accent"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm text-ink/70">
+            ORCID iD (optional)
+          </span>
+          <input
+            value={orcidId}
+            onChange={(e) => setOrcidId(e.target.value)}
+            placeholder="0000-0002-1825-0097"
+            className="rounded-card border border-line bg-panel px-4 py-2.5 text-sm focus:border-accent font-mono"
+          />
+          <span className="text-xs text-ink/40">
+            Shown as a badge on your reports. Find yours at orcid.org.
+          </span>
+        </label>
+
         <button
           type="submit"
           disabled={status === "saving"}

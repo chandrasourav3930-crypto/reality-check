@@ -46,6 +46,17 @@ export default function EntryCard({
                 ✓
               </span>
             )}
+            {author.orcid_id && (
+              <a
+                href={`https://orcid.org/${author.orcid_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`ORCID: ${author.orcid_id}`}
+                className="inline-flex items-center text-[#A6CE39] hover:opacity-80"
+              >
+                iD
+              </a>
+            )}
           </div>
         )}
 

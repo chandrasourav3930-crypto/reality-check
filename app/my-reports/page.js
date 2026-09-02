@@ -30,7 +30,7 @@ export default function MyReportsPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("profiles")
-          .select("id, display_name, is_academic")
+          .select("id, display_name, is_academic, orcid_id")
           .eq("id", userData.user.id)
           .maybeSingle(),
       ]);

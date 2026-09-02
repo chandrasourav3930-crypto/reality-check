@@ -12,9 +12,19 @@ This README assumes zero prior setup. Follow it top to bottom.
 
 If you already set up Supabase and deployed an earlier version of this
 project, don't re-run `supabase/schema.sql` — it would try to recreate
-tables that already exist. Instead, run
-`supabase/migration_v4_broaden_scope.sql` once in your Supabase SQL
-Editor. It only adds/renames columns, so your existing reports are kept.
+tables that already exist. Instead, run these two files once in your
+Supabase SQL Editor, in order:
+
+1. `supabase/migration_to_v5.sql` (if you haven't already) — adds
+   categories, research areas, the profiles table, and DOI links.
+2. `supabase/migration_v6_orcid.sql` — adds the optional ORCID iD field.
+
+Both only add/rename columns, so your existing reports are kept.
+
+**Also note:** this version switches from magic-link sign-in to email +
+password. Anyone who signed in before (including you) will need to use
+the "Forgot password?" link once to set a password for their existing
+account — their account and past reports aren't affected.
 
 ---
 

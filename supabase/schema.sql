@@ -27,6 +27,7 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null,
   is_academic boolean not null default false,
+  orcid_id text,
   created_at timestamp with time zone default now()
 );
 

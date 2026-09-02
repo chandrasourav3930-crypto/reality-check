@@ -9,7 +9,7 @@ export default async function AuthorPage({ params }) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, display_name, is_academic")
+    .select("id, display_name, is_academic, orcid_id")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -48,6 +48,17 @@ export default async function AuthorPage({ params }) {
           >
             ✓
           </span>
+        )}
+        {profile.orcid_id && (
+          <a
+            href={`https://orcid.org/${profile.orcid_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`ORCID: ${profile.orcid_id}`}
+            className="text-sm text-[#A6CE39] hover:opacity-80 font-medium"
+          >
+            ORCID iD
+          </a>
         )}
       </div>
       <p className="text-ink/60 text-sm mb-8">
