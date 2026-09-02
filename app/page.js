@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabaseServer";
 import EntryCard from "./EntryCard";
 import FilterBar from "./FilterBar";
+import StatsCharts from "./StatsCharts";
 
 export const dynamic = "force-dynamic";
 
@@ -11,28 +12,70 @@ function groupKey(entry) {
     .join("|");
 }
 
+function monthKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default async function HomePage({ searchParams }) {
   const q = searchParams?.q?.trim() || "";
   const technique = searchParams?.technique || "";
-  const cancerType = searchParams?.cancer_type || "";
-  const hasSearch = Boolean(q || technique || cancerType);
+  const category = searchParams?.category || "";
+  const researchArea = searchParams?.research_area || "";
+  const hasSearch = Boolean(q || technique || category || researchArea);
 
   let entries = null;
-  let cancerTypes = [];
-  let stats = null;
+  let profilesById = {};
+  let researchAreas = [];
+  let growth = [];
+  let categoryBreakdown = [];
   let error = null;
 
   try {
     const supabase = createClient();
 
-    // Distinct cancer types, for the filter dropdown.
-    const { data: typesData } = await supabase
+    // All rows, lightweight columns only — used to build filters + charts.
+    const { data: allRows } = await supabase
       .from("entries")
-      .select("cancer_type")
-      .not("cancer_type", "is", null);
-    cancerTypes = [...new Set((typesData || []).map((r) => r.cancer_type))]
-      .filter(Boolean)
-      .sort();
+      .select("created_at, vendor, category, research_area")
+      .order("created_at", { ascending: true });
+
+    if (allRows?.length) {
+      researchAreas = [
+        ...new Set(allRows.map((r) => r.research_area)),
+      ]
+        .filter(Boolean)
+        .sort();
+
+      // Cumulative reports + cumulative distinct vendors, by month.
+      const seenVendors = new Set();
+      const byMonth = new Map();
+      for (const row of allRows) {
+        const key = monthKey(row.created_at);
+        seenVendors.add((row.vendor || "").trim().toLowerCase());
+        byMonth.set(key, {
+          reports: (byMonth.get(key)?.reports || 0) + 1,
+          vendors: seenVendors.size,
+        });
+      }
+      let cumulativeReports = 0;
+      growth = [...byMonth.entries()]
+        .sort(([a], [b]) => (a > b ? 1 : -1))
+        .map(([month, v]) => {
+          cumulativeReports += v.reports;
+          return { month, reports: cumulativeReports, vendors: v.vendors };
+        });
+
+      const catCounts = {};
+      for (const row of allRows) {
+        const cat = row.category || "Antibody";
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+      }
+      categoryBreakdown = Object.entries(catCounts).map(([cat, count]) => ({
+        category: cat,
+        count,
+      }));
+    }
 
     if (hasSearch) {
       let query = supabase
@@ -47,23 +90,27 @@ export default async function HomePage({ searchParams }) {
         );
       }
       if (technique) query = query.eq("technique", technique);
-      if (cancerType) query = query.eq("cancer_type", cancerType);
+      if (category) query = query.eq("category", category);
+      if (researchArea) query = query.eq("research_area", researchArea);
 
       const result = await query;
       entries = result.data;
       error = result.error;
-    } else {
-      // No search yet — just show light stats, not the full table.
-      const { count } = await supabase
-        .from("entries")
-        .select("*", { count: "exact", head: true });
-      const { data: targetsData } = await supabase
-        .from("entries")
-        .select("target");
-      const targetCount = new Set(
-        (targetsData || []).map((r) => r.target?.trim().toLowerCase())
-      ).size;
-      stats = { reports: count || 0, targets: targetCount };
+
+      if (entries?.length) {
+        const userIds = [
+          ...new Set(entries.map((e) => e.user_id).filter(Boolean)),
+        ];
+        if (userIds.length) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, display_name, is_academic")
+            .in("id", userIds);
+          profilesById = Object.fromEntries(
+            (profiles || []).map((p) => [p.id, p])
+          );
+        }
+      }
     }
   } catch (err) {
     error = err;
@@ -83,17 +130,19 @@ export default async function HomePage({ searchParams }) {
     <div>
       <section className="mb-10">
         <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink leading-tight max-w-2xl">
-          Did this antibody actually work?
+          Did this reagent actually work?
         </h1>
         <p className="mt-3 text-ink/60 max-w-xl">
-          Real pass/fail reports from researchers, by target, vendor, and cell
-          line — the details vendor pages never tell you.
+          Real pass/fail reports from researchers — antibodies, primers,
+          kits, and more — by marker, vendor, and model system, the details
+          vendor pages never tell you.
         </p>
         <div className="mt-7">
           <FilterBar
             defaultQ={q}
             defaultTechnique={technique}
-            cancerTypes={cancerTypes}
+            defaultCategory={category}
+            researchAreas={researchAreas}
           />
         </div>
       </section>
@@ -105,17 +154,16 @@ export default async function HomePage({ searchParams }) {
         </div>
       )}
 
+      {!error && (
+        <StatsCharts growth={growth} categoryBreakdown={categoryBreakdown} />
+      )}
+
       {!error && !hasSearch && (
         <div className="rounded-card border border-line bg-panel px-6 py-14 text-center">
           <p className="text-ink font-medium">
             Search above to see reports.
           </p>
-          {stats && stats.reports > 0 ? (
-            <p className="text-ink/50 text-sm mt-1 font-mono">
-              {stats.reports} report{stats.reports === 1 ? "" : "s"} across{" "}
-              {stats.targets} target{stats.targets === 1 ? "" : "s"} so far.
-            </p>
-          ) : (
+          {growth.length === 0 && (
             <p className="text-ink/50 text-sm mt-1">
               No reports yet —{" "}
               <Link href="/submit" className="underline hover:text-ink">
@@ -142,7 +190,11 @@ export default async function HomePage({ searchParams }) {
         <ul className="grid gap-4 sm:grid-cols-2">
           {entries.map((entry) => (
             <li key={entry.id}>
-              <EntryCard entry={entry} counts={counts[groupKey(entry)]} />
+              <EntryCard
+                entry={entry}
+                counts={counts[groupKey(entry)]}
+                author={profilesById[entry.user_id]}
+              />
             </li>
           ))}
         </ul>

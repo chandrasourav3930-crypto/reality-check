@@ -7,6 +7,7 @@ import EntryCard from "../EntryCard";
 
 export default function MyReportsPage() {
   const [user, setUser] = useState(undefined); // undefined = loading
+  const [profile, setProfile] = useState(null);
   const [entries, setEntries] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
@@ -21,14 +22,21 @@ export default function MyReportsPage() {
     setUser(userData.user ?? null);
 
     if (userData.user) {
-      const { data, error } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("created_at", { ascending: false });
+      const [{ data }, { data: profileData }] = await Promise.all([
+        supabase
+          .from("entries")
+          .select("*")
+          .eq("user_id", userData.user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id, display_name, is_academic")
+          .eq("id", userData.user.id)
+          .maybeSingle(),
+      ]);
 
-      if (error) setError(error.message);
       setEntries(data || []);
+      setProfile(profileData || null);
     }
   }
 
@@ -110,6 +118,7 @@ export default function MyReportsPage() {
             <li key={entry.id}>
               <EntryCard
                 entry={entry}
+                author={profile}
                 isOwner
                 onDelete={() => handleDelete(entry.id)}
                 deleting={deletingId === entry.id}

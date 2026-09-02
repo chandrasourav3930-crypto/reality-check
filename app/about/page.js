@@ -1,26 +1,29 @@
 export const metadata = {
-  title: "About — Reality Check",
+  title: "About — Find My Marker",
 };
 
 export default function AboutPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="font-display font-bold text-3xl text-ink">
-        About Reality Check
+        About Find My Marker
       </h1>
 
       <div className="mt-6 flex flex-col gap-4 text-ink/80 leading-relaxed">
         <p>
-          Vendor pages tell you an antibody was validated. They don't tell
-          you whether it actually worked in <em>your</em> cell line, at{" "}
-          <em>your</em> dilution, for your specific technique. That gap is
-          where a lot of wasted weeks in a lab come from.
+          Vendor pages tell you a reagent was validated. They don't tell
+          you whether it actually worked in <em>your</em> model system, at{" "}
+          <em>your</em> concentration, for your specific technique. That
+          gap is where a lot of wasted weeks in a lab come from.
         </p>
         <p>
-          Reality Check is a public, crowd-sourced log of real results —
+          Find My Marker is a public, crowd-sourced log of real results —
           worked or didn't — reported by the researchers who actually ran
-          the experiment. No vendor marketing, no cherry-picked validation
-          images. Just what happened on the bench.
+          the experiment. Antibodies, primers, kits, CRISPR constructs,
+          and more, across any field of biomedical research — not
+          restricted to any one cancer type or technique. No vendor
+          marketing, no cherry-picked validation images. Just what
+          happened on the bench.
         </p>
         <p>
           Anyone can search it for free. Submitting a report takes about a

@@ -52,6 +52,12 @@ export default function NavAuth() {
       >
         My reports
       </Link>
+      <Link
+        href="/account"
+        className="hidden sm:inline text-ink/70 hover:text-ink text-sm"
+      >
+        Account
+      </Link>
       <span className="hidden md:inline text-ink/50 text-xs font-mono">
         {email}
       </span>

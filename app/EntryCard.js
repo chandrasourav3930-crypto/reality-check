@@ -15,7 +15,14 @@ const STATUS = {
   },
 };
 
-export default function EntryCard({ entry, counts, isOwner, onDelete, deleting }) {
+export default function EntryCard({
+  entry,
+  counts,
+  author,
+  isOwner,
+  onDelete,
+  deleting,
+}) {
   const status = STATUS[String(entry.worked)];
   const totalReports = (counts?.works || 0) + (counts?.fails || 0);
 
@@ -23,10 +30,34 @@ export default function EntryCard({ entry, counts, isOwner, onDelete, deleting }
     <article className="relative rounded-card border border-line bg-panel overflow-hidden">
       <div className={`absolute left-0 top-0 h-full w-1.5 ${status.bar}`} />
       <div className="pl-5 pr-4 py-4">
+        {author?.display_name && (
+          <div className="flex items-center gap-1.5 mb-2 text-xs">
+            <Link
+              href={`/author/${author.id}`}
+              className="text-ink/60 hover:text-ink font-medium"
+            >
+              {author.display_name}
+            </Link>
+            {author.is_academic && (
+              <span
+                title="Institutional email verified"
+                className="inline-flex items-center gap-0.5 text-works"
+              >
+                ✓
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-display font-semibold text-lg text-ink leading-snug">
-            {entry.target}
-          </h2>
+          <div>
+            <span className="inline-block text-[10px] uppercase tracking-wide font-mono text-ink/40 mb-0.5">
+              {entry.category || "Antibody"}
+            </span>
+            <h2 className="font-display font-semibold text-lg text-ink leading-snug">
+              {entry.target}
+            </h2>
+          </div>
           <span
             className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.chip}`}
           >
@@ -50,7 +81,7 @@ export default function EntryCard({ entry, counts, isOwner, onDelete, deleting }
         )}
 
         <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-sm font-mono text-ink/80">
-          <dt className="text-ink/40">Cell line</dt>
+          <dt className="text-ink/40">Model system</dt>
           <dd>{entry.cell_line}</dd>
 
           <dt className="text-ink/40">Technique</dt>
@@ -63,10 +94,10 @@ export default function EntryCard({ entry, counts, isOwner, onDelete, deleting }
             </>
           )}
 
-          {entry.cancer_type && (
+          {entry.research_area && (
             <>
-              <dt className="text-ink/40">Cancer type</dt>
-              <dd>{entry.cancer_type}</dd>
+              <dt className="text-ink/40">Research area</dt>
+              <dd>{entry.research_area}</dd>
             </>
           )}
         </dl>
@@ -75,6 +106,17 @@ export default function EntryCard({ entry, counts, isOwner, onDelete, deleting }
           <p className="mt-3 text-sm text-ink/70 border-t border-line pt-3">
             {entry.notes}
           </p>
+        )}
+
+        {entry.doi_url && (
+          <a
+            href={entry.doi_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-mixed hover:text-mixed/80"
+          >
+            Published reference ↗
+          </a>
         )}
 
         {isOwner && (

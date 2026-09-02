@@ -3,9 +3,9 @@ import Link from "next/link";
 import NavAuth from "./NavAuth";
 
 export const metadata = {
-  title: "Reality Check — antibody & reagent reports from real labs",
+  title: "Find My Marker — reagent & marker reports from real labs",
   description:
-    "A public log of what actually worked (and didn't) — antibodies and reagents, reported by the researchers who used them.",
+    "A public log of what actually worked (and didn't) — antibodies, primers, kits, and other research reagents, reported by the researchers who used them.",
 };
 
 export default function RootLayout({ children }) {
@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
           <div className="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-baseline gap-2">
               <span className="font-display font-bold text-xl tracking-tight text-ink">
-                Reality Check
+                Find My Marker
               </span>
               <span className="hidden sm:inline text-xs text-ink/50 font-mono">
                 lab-tested, not vendor-tested
@@ -44,7 +44,7 @@ export default function RootLayout({ children }) {
         <footer className="border-t border-line mt-16">
           <div className="max-w-5xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <p className="text-xs text-ink/50 font-mono">
-              Reality Check is a community log, not a validation service.
+              Find My Marker is a community log, not a validation service.
               Always confirm reagent performance in your own hands.
             </p>
             <div className="flex gap-4 text-xs text-ink/60">

@@ -1,9 +1,9 @@
 export const metadata = {
-  title: "Contact — Reality Check",
+  title: "Contact — Find My Marker",
 };
 
 // Change this to the email address you want to receive messages at.
-const CONTACT_EMAIL = "chandrasourav3930@gmail.com";
+const CONTACT_EMAIL = "your-email@example.com";
 
 export default function ContactPage() {
   return (

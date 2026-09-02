@@ -7,17 +7,42 @@ create table if not exists entries (
   created_at timestamp with time zone default now(),
   user_id uuid references auth.users(id) on delete set null,
 
-  target text not null,          -- e.g. "Ki-67"
+  target text not null,          -- e.g. "Ki-67", or a gene/sequence target
+  category text not null default 'Antibody', -- e.g. "Antibody", "PCR primer/probe", "ELISA/assay kit"
   vendor text not null,          -- e.g. "Abcam"
   catalog_number text,           -- e.g. "ab16667"
   clone text,                    -- e.g. "MIB-1"
-  cell_line text not null,       -- e.g. "MCF-7"
-  cancer_type text,              -- e.g. "Breast cancer"
-  technique text not null,       -- e.g. "IHC", "Western blot", "Flow cytometry"
+  cell_line text not null,       -- e.g. "MCF-7", or the model system used
+  research_area text,            -- e.g. "Breast cancer", "Immunology", "Neuroscience"
+  technique text not null,       -- e.g. "IHC", "Western blot", "PCR/qPCR"
   dilution text,                 -- e.g. "1:200"
   worked boolean not null,       -- true = worked, false = did not work
-  notes text
+  notes text,
+  doi_url text                   -- optional link to a publication using this reagent
 );
+
+-- One row per user: their public display name (never their email) and
+-- whether their sign-up email looked academic/institutional.
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null,
+  is_academic boolean not null default false,
+  created_at timestamp with time zone default now()
+);
+
+alter table profiles enable row level security;
+
+create policy "Profiles are publicly readable"
+  on profiles for select
+  using (true);
+
+create policy "Users can create their own profile"
+  on profiles for insert
+  with check (auth.uid() = id);
+
+create policy "Users can update their own profile"
+  on profiles for update
+  using (auth.uid() = id);
 
 -- Row Level Security: on by default, nobody can read/write until we add policies.
 alter table entries enable row level security;

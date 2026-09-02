@@ -1,9 +1,20 @@
-# Reality Check
+# Find My Marker
 
-A public log of antibody/reagent results, reported by the researchers who
-actually used them — pass/fail, by target, vendor, cell line, and technique.
+A public log of research reagent results — antibodies, primers, kits,
+and more — reported by the researchers who actually used them:
+pass/fail, by marker, vendor, model system, and technique.
 
 This README assumes zero prior setup. Follow it top to bottom.
+
+---
+
+## Already have this running live? Read this first
+
+If you already set up Supabase and deployed an earlier version of this
+project, don't re-run `supabase/schema.sql` — it would try to recreate
+tables that already exist. Instead, run
+`supabase/migration_v4_broaden_scope.sql` once in your Supabase SQL
+Editor. It only adds/renames columns, so your existing reports are kept.
 
 ---
 

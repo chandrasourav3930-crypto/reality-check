@@ -2,20 +2,27 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { TECHNIQUES } from "@/lib/constants";
+import { CATEGORIES, TECHNIQUES } from "@/lib/constants";
 
-export default function FilterBar({ defaultQ, defaultTechnique, cancerTypes }) {
+export default function FilterBar({
+  defaultQ,
+  defaultTechnique,
+  defaultCategory,
+  researchAreas,
+}) {
   const [q, setQ] = useState(defaultQ || "");
   const [technique, setTechnique] = useState(defaultTechnique || "");
-  const [cancerType, setCancerType] = useState("");
+  const [category, setCategory] = useState(defaultCategory || "");
+  const [researchArea, setResearchArea] = useState("");
   const router = useRouter();
 
   function apply(next) {
     const params = new URLSearchParams();
-    const merged = { q, technique, cancerType, ...next };
+    const merged = { q, technique, category, researchArea, ...next };
     if (merged.q?.trim()) params.set("q", merged.q.trim());
     if (merged.technique) params.set("technique", merged.technique);
-    if (merged.cancerType) params.set("cancer_type", merged.cancerType);
+    if (merged.category) params.set("category", merged.category);
+    if (merged.researchArea) params.set("research_area", merged.researchArea);
     router.push(`/?${params.toString()}`);
   }
 
@@ -31,7 +38,7 @@ export default function FilterBar({ defaultQ, defaultTechnique, cancerTypes }) {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by target, vendor, or cell line — e.g. Ki-67, Abcam, MCF-7"
+          placeholder="Search by marker, vendor, or model system — e.g. Ki-67, Abcam, MCF-7"
           className="flex-1 rounded-card border border-line bg-panel px-5 py-3.5 text-base placeholder:text-ink/40 focus:border-accent"
         />
         <button
@@ -43,6 +50,22 @@ export default function FilterBar({ defaultQ, defaultTechnique, cancerTypes }) {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mt-3">
+        <select
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            apply({ category: e.target.value });
+          }}
+          className="flex-1 rounded-card border border-line bg-panel px-4 py-3 text-sm text-ink/70"
+        >
+          <option value="">All categories</option>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+
         <select
           value={technique}
           onChange={(e) => {
@@ -59,19 +82,19 @@ export default function FilterBar({ defaultQ, defaultTechnique, cancerTypes }) {
           ))}
         </select>
 
-        {cancerTypes?.length > 0 && (
+        {researchAreas?.length > 0 && (
           <select
-            value={cancerType}
+            value={researchArea}
             onChange={(e) => {
-              setCancerType(e.target.value);
-              apply({ cancerType: e.target.value });
+              setResearchArea(e.target.value);
+              apply({ researchArea: e.target.value });
             }}
             className="flex-1 rounded-card border border-line bg-panel px-4 py-3 text-sm text-ink/70"
           >
-            <option value="">All cancer types</option>
-            {cancerTypes.map((c) => (
-              <option key={c} value={c}>
-                {c}
+            <option value="">All research areas</option>
+            {researchAreas.map((r) => (
+              <option key={r} value={r}>
+                {r}
               </option>
             ))}
           </select>

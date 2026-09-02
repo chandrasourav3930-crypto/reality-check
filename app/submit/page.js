@@ -4,19 +4,21 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
-import { TECHNIQUES } from "@/lib/constants";
+import { CATEGORIES, RESEARCH_AREA_SUGGESTIONS, TECHNIQUES } from "@/lib/constants";
 
 const emptyForm = {
   target: "",
+  category: CATEGORIES[0],
   vendor: "",
   catalog_number: "",
   clone: "",
   cell_line: "",
-  cancer_type: "",
+  research_area: "",
   technique: TECHNIQUES[0],
   dilution: "",
   worked: "true",
   notes: "",
+  doi_url: "",
 };
 
 export default function SubmitPage() {
@@ -33,6 +35,7 @@ function SubmitPageContent() {
   const editId = searchParams.get("edit");
 
   const [user, setUser] = useState(undefined); // undefined = loading
+  const [needsProfile, setNeedsProfile] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [status, setStatus] = useState("idle"); // idle | loading | saving | deleting | error | forbidden
   const [errorMessage, setErrorMessage] = useState("");
@@ -43,6 +46,18 @@ function SubmitPageContent() {
     async function init() {
       const { data: userData } = await supabase.auth.getUser();
       setUser(userData.user ?? null);
+
+      if (userData.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", userData.user.id)
+          .maybeSingle();
+        if (!profile?.display_name) {
+          setNeedsProfile(true);
+          return;
+        }
+      }
 
       if (editId && userData.user) {
         setStatus("loading");
@@ -64,15 +79,17 @@ function SubmitPageContent() {
 
         setForm({
           target: entry.target || "",
+          category: entry.category || CATEGORIES[0],
           vendor: entry.vendor || "",
           catalog_number: entry.catalog_number || "",
           clone: entry.clone || "",
           cell_line: entry.cell_line || "",
-          cancer_type: entry.cancer_type || "",
+          research_area: entry.research_area || "",
           technique: entry.technique || TECHNIQUES[0],
           dilution: entry.dilution || "",
           worked: String(entry.worked),
           notes: entry.notes || "",
+          doi_url: entry.doi_url || "",
         });
         setStatus("idle");
       }
@@ -93,15 +110,17 @@ function SubmitPageContent() {
     const supabase = createClient();
     const payload = {
       target: form.target.trim(),
+      category: form.category,
       vendor: form.vendor.trim(),
       catalog_number: form.catalog_number.trim() || null,
       clone: form.clone.trim() || null,
       cell_line: form.cell_line.trim(),
-      cancer_type: form.cancer_type.trim() || null,
+      research_area: form.research_area.trim() || null,
       technique: form.technique,
       dilution: form.dilution.trim() || null,
       worked: form.worked === "true",
       notes: form.notes.trim() || null,
+      doi_url: form.doi_url.trim() || null,
     };
 
     const { error } = editId
@@ -158,6 +177,26 @@ function SubmitPageContent() {
     );
   }
 
+  if (needsProfile) {
+    return (
+      <div className="max-w-md mx-auto py-8 text-center">
+        <h1 className="font-display font-bold text-2xl text-ink">
+          Set your public name first
+        </h1>
+        <p className="mt-2 text-sm text-ink/60">
+          Every report shows who submitted it — takes 10 seconds to set
+          up, then you'll be brought right back here.
+        </p>
+        <Link
+          href={`/account?next=/submit${editId ? `?edit=${editId}` : ""}`}
+          className="mt-6 inline-block rounded-card bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-ink/90"
+        >
+          Set your name
+        </Link>
+      </div>
+    );
+  }
+
   if (status === "forbidden") {
     return (
       <div className="max-w-md mx-auto py-8 text-center">
@@ -189,14 +228,28 @@ function SubmitPageContent() {
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-        <Field label="Target (protein/marker)" required>
+        <Field label="Marker / target" required>
           <input
             required
             value={form.target}
             onChange={(e) => update("target", e.target.value)}
-            placeholder="e.g. Ki-67"
+            placeholder="e.g. Ki-67, GAPDH, hsa-miR-21, EGFR exon 19"
             className="input"
           />
+        </Field>
+
+        <Field label="Category" required>
+          <select
+            value={form.category}
+            onChange={(e) => update("category", e.target.value)}
+            className="input"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
@@ -239,22 +292,28 @@ function SubmitPageContent() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Cell line" required>
+          <Field label="Model system" required>
             <input
               required
               value={form.cell_line}
               onChange={(e) => update("cell_line", e.target.value)}
-              placeholder="e.g. MCF-7"
+              placeholder="e.g. MCF-7, HEK293, mouse C57BL/6"
               className="input"
             />
           </Field>
-          <Field label="Cancer type">
+          <Field label="Research area (optional)">
             <input
-              value={form.cancer_type}
-              onChange={(e) => update("cancer_type", e.target.value)}
-              placeholder="e.g. Breast cancer"
+              list="research-area-suggestions"
+              value={form.research_area}
+              onChange={(e) => update("research_area", e.target.value)}
+              placeholder="e.g. Breast cancer, Immunology, Neuroscience"
               className="input"
             />
+            <datalist id="research-area-suggestions">
+              {RESEARCH_AREA_SUGGESTIONS.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
           </Field>
         </div>
 
@@ -297,6 +356,20 @@ function SubmitPageContent() {
             rows={3}
             className="input resize-none"
           />
+        </Field>
+
+        <Field label="Publication link (optional)">
+          <input
+            type="url"
+            value={form.doi_url}
+            onChange={(e) => update("doi_url", e.target.value)}
+            placeholder="e.g. https://doi.org/10.xxxx/xxxxx"
+            className="input"
+          />
+          <span className="text-xs text-ink/40 -mt-1">
+            If this result appears in a published paper, linking it adds a
+            "Published reference" badge to your report.
+          </span>
         </Field>
 
         {status === "error" && (
